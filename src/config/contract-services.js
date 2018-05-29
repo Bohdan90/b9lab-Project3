@@ -1,5 +1,6 @@
 import RockPaperScissors from '../../build/contracts/RockPaperScissors.json'
 
+
 export const getContract = async (_web3) => {
     const contract = require('truffle-contract')
     const simpleStorage = contract(RockPaperScissors)
@@ -15,11 +16,11 @@ export const getAccounts = (_web3) => {
 
 
 export const getFirstAccScore = async (contractInstance, sender) => {
-    let firstScore = await contractInstance.getFirstScore({from: sender});
+    let firstScore = await contractInstance.getFirstScore.call({from: sender});
     return firstScore.toString();
 };
 export const getSecondAccScore = async (contractInstance, sender) => {
-    let secondScore = await contractInstance.getSecondScore({from: sender});
+    let secondScore = await contractInstance.getSecondScore.call({from: sender});
     return secondScore.toString();
 };
 export const checkWinner = async (contractInstance, sender) => {

@@ -1,6 +1,6 @@
 import React, {Component} from 'react'
 import * as services from './config/contract-services'
-import {initWeb3} from './utils/getWeb3'
+import {initWeb3} from "./utils/getWeb3";
 
 import './css/oswald.css'
 import './css/open-sans.css'
@@ -29,13 +29,11 @@ class App extends Component {
         web3Instance = await  initWeb3();
         contractInstance = await  services.getContract(web3Instance);
         userList = await  services.getAccounts(web3Instance);
-        console.log(userList)
-        console.log(contractInstance)
-
     }
 
 
     handleChange(event) {
+        console.log( event.target.value)
         this.setState({value: event.target.value});
     }
 
@@ -51,6 +49,7 @@ class App extends Component {
     }
 
     makeChoice(e) {
+        console.log(contractInstance, userList[1])
         services.makeChoice(e.target.id, this.state.value, contractInstance, userList[0]);
 
     }
@@ -77,11 +76,11 @@ class App extends Component {
                                 <input type="number" value={this.state.value} onChange={this.handleChange}/>
                             </label>
                             <br/>
-                            <button id='1' onClick={this.makeChoice}>I choose Rock</button>
-                            <button id='2' onClick={this.makeChoice}>I choose Paper</button>
-                            <button id='3' onClick={this.makeChoice}>I choose Scissors</button>
+                            <button id='1' onClick={this.makeChoice.bind(this)}>I choose Rock</button>
+                            <button id='2' onClick={this.makeChoice.bind(this)}>I choose Paper</button>
+                            <button id='3' onClick={this.makeChoice.bind(this)}>I choose Scissors</button>
                             <br/>
-                            <button onClick={this.checkWinner}>Check winner</button>
+                            <button onClick={this.checkWinner.bind(this)}>Check winner</button>
                             <h2>First player score: {this.state.firstPlayerScore}</h2>
                             <h2>Second player score: {this.state.secondPlayerScore}</h2>
 
