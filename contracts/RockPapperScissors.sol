@@ -3,80 +3,104 @@ pragma solidity ^0.4.4;
 import './Destroyable.sol';
 import './Stoppable.sol';
 
-contract RockPaperScissors is Destroyable, Stoppable {
-    address private firstPlayerAddr;
-    address private secondPlayerAddr;
+contract RockPaperScissors is Destroyable {
+  address private firstPlayerAddr;
+  address private secondPlayerAddr;
 
-    uint private firstPlayerScore = 0;
-    uint private secondPlayerScore = 0;
-    uint private winningChoince = 0;
-    mapping(address => uint) private choices;
-
-    event LogChoice(address);
-    event SetBenefits(address, uint);
-    event LogWinnedChoice(uint);
-
-constructor(address firstAddr,address secAddr){
-firstPlayerAddr = firstAddr;
-secondPlayerAddr = secAddr;
-}
+  uint private firstChoice;
+  uint private secondChoice;
+  uint private firstPlayerScore = 0;
+  uint private secondPlayerScore = 0;
+  uint private winningChoince = 0;
+  mapping(address => bytes32) private choices;
 
 
-function getFirstScore() returns (uint){
-return firstPlayerScore;
-}
+  event LogChoice(address);
+  event SetBenefits(address, uint);
+  event LogWinnedChoice(uint);
 
-function getSecondScore()returns (uint){
-return secondPlayerScore;
-}
+  constructor(address firstAddr,address secAddr){
+    firstPlayerAddr = firstAddr;
+    secondPlayerAddr = secAddr;
+  }
 
-function checkWinner() returns (string){
-if (choices[firstPlayerAddr] == 0 || choices[secondPlayerAddr] == 0){
-return 'other player didn`t choose';
-}
-if (choices[firstPlayerAddr] == choices[secondPlayerAddr]){
-return 'draw';
-}else if ((choices[firstPlayerAddr] == 1 || choices[secondPlayerAddr] == 1) && (choices[firstPlayerAddr] == 2 || choices[secondPlayerAddr] == 2)){
-winningChoince = 1;
-}else if ((choices[firstPlayerAddr] == 2 || choices[secondPlayerAddr] == 2) && (choices[firstPlayerAddr] == 3 || choices[secondPlayerAddr] == 3)){
-winningChoince = 2;
-}else {
-winningChoince = 3;
-}
-LogWinnedChoice(winningChoince);
-return setWinnerBenefits(winningChoince);
+  function getFirstScore() returns (uint){
+    return firstPlayerScore;
+  }
 
-}
-
-function setWinnerBenefits(uint winnerInt) private returns (string){
-
-if (choices[firstPlayerAddr] == winnerInt){
-SetBenefits(firstPlayerAddr, this.balance);
-firstPlayerScore = firstPlayerScore + 1;
-firstPlayerAddr.transfer(this.balance);
-clearChoices();
-return 'Player1 Wins!';
-}else {
-SetBenefits(secondPlayerAddr, this.balance);
-secondPlayerScore = secondPlayerScore + 1;
-secondPlayerAddr.transfer(this.balance);
-clearChoices();
-return 'Player2 Wins!';
-}
-}
-
-function clearChoices(){
-choices[firstPlayerAddr] = 0;
-choices[secondPlayerAddr] = 0;
-winningChoince = 0;
-}
+  function getSecondScore() returns (uint){
+    return secondPlayerScore;
+  }
 
 
-function makeChoice(uint choice) onlyIfRunning payable returns (string result){
-LogChoice(msg.sender);
-require(msg.sender == firstPlayerAddr || msg.sender == secondPlayerAddr);
-choices[msg.sender] = choice;
-return checkWinner();
-}
+  function checkSelection(string userPass, address userAddr) private returns (uint){
+    if (choices[userAddr] == keccak256(userPass, 1)) {
+      return 1;
+    } else if (choices[userAddr] == keccak256(userPass, 2)) {
+      return 2;
+    } else if (choices[userAddr] == keccak256(userPass, 3)) {
+      return 3;
+    } else {
+      return 0;
+    }
+  }
+
+  function isEveryoneChoose() public returns (bool){
+    if (choices[firstPlayerAddr] == 0 || choices[secondPlayerAddr] == 0) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  function checkWinner(string password) public returns (string){
+    firstChoice = checkSelection(password, firstPlayerAddr);
+    secondChoice = checkSelection(password, secondPlayerAddr);
+    if (firstChoice == secondChoice) {
+      return 'draw';
+    } else if ((firstChoice == 1 || secondChoice == 1) && (firstChoice == 2 || secondChoice == 2)) {
+      winningChoince = 1;
+    } else if ((firstChoice == 2 || secondChoice == 2) && (firstChoice == 3 || secondChoice == 3)) {
+      winningChoince = 2;
+    } else {
+      winningChoince = 3;
+    }
+    LogWinnedChoice(winningChoince);
+    if (winningChoince == firstChoice) {
+      firstPlayerScore = firstPlayerScore + 1;
+      setWinnerBenefits(firstPlayerAddr);
+      return 'Player1 Win';
+    } else {
+      secondPlayerScore = secondPlayerScore + 1;
+      setWinnerBenefits(secondPlayerAddr);
+      return 'Player2 Win';
+    }
+  }
+
+  function setWinnerBenefits(address userAddr) private returns (bool){
+    SetBenefits(userAddr, this.balance);
+    userAddr.transfer(this.balance);
+    clearChoices();
+    return true;
+  }
+
+  function clearChoices() private {
+    choices[firstPlayerAddr] = 0;
+    choices[secondPlayerAddr] = 0;
+    winningChoince = 0;
+  }
+
+
+  function makeChoice(bytes32 choice) onlyIfRunning payable returns (bool result){
+    LogChoice(msg.sender);
+    require(msg.sender == firstPlayerAddr || msg.sender == secondPlayerAddr);
+    choices[msg.sender] = choice;
+    return true;
+  }
+
+
+  function returnHash(string pass, uint8 choice) constant returns (bytes32){
+    return keccak256(pass, uint8(choice));
+  }
 
 }
