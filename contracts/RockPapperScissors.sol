@@ -16,7 +16,7 @@ contract RockPaperScissors is Destroyable {
 
 
   event LogChoice(address);
-  event SetBenefits(address, uint);
+  event LogSetBenefits(address, uint);
   event LogWinnedChoice(uint);
 
   constructor(address firstAddr,address secAddr){
@@ -65,7 +65,7 @@ contract RockPaperScissors is Destroyable {
     } else {
       winningChoince = 3;
     }
-    LogWinnedChoice(winningChoince);
+    emit LogWinnedChoice(winningChoince);
     if (winningChoince == firstChoice) {
       firstPlayerScore = firstPlayerScore + 1;
       setWinnerBenefits(firstPlayerAddr);
@@ -78,9 +78,9 @@ contract RockPaperScissors is Destroyable {
   }
 
   function setWinnerBenefits(address userAddr) private returns (bool){
-    SetBenefits(userAddr, this.balance);
-    userAddr.transfer(this.balance);
+    emit LogSetBenefits(userAddr, this.balance);
     clearChoices();
+    userAddr.transfer(this.balance);
     return true;
   }
 
@@ -92,14 +92,14 @@ contract RockPaperScissors is Destroyable {
 
 
   function makeChoice(bytes32 choice) onlyIfRunning payable returns (bool result){
-    LogChoice(msg.sender);
+    emit LogChoice(msg.sender);
     require(msg.sender == firstPlayerAddr || msg.sender == secondPlayerAddr);
     choices[msg.sender] = choice;
     return true;
   }
 
 
-  function returnHash(string pass, uint8 choice) constant returns (bytes32){
+  function returnHash(string pass, uint8 choice) view returns (bytes32){
     return keccak256(pass, uint8(choice));
   }
 
