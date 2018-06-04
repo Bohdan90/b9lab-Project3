@@ -8,8 +8,8 @@ contract Stoppable is Ownable {
   event LogStopContract(bool, address);
   event LogResumeContract(bool, address);
 
-  constructor(){
-    stopped = false;
+  constructor(bool isStopped){
+    stopped = isStopped;
   }
 
   function stopContract() public onlyOwner onlyIfRunning returns (bool success) {
