@@ -18,7 +18,7 @@ contract RockPaperScissors is Destroyable {
 
   event LogChoice(address player, bytes32 choice);
   event LogSetBenefits(address winnerAddr, uint winningsAmount);
-  event LogWinnedChoice(uint);
+  event LogWinnedChoice(uint winnerChoice);
 
   constructor(address firstAddr,address secAddr){
     firstPlayerAddr = firstAddr;
