@@ -10,11 +10,11 @@ contract RockPaperScissors {
     uint firstPlayerScore;
     uint secondPlayerScore;
     bool isGameEnded;
-    bool everyoneChoose;
+    bool everyoneChoose ;
     bool everyChooseDecoded;
-    mapping(address => bytes32) choicesHashed;
-    mapping(address => uint) choices;
-    mapping(address => uint) balances;
+    mapping(address => bytes32)  choicesHashed;
+    mapping(address => uint)  choices;
+    mapping(address => uint)  balances;
 
   }
 
@@ -27,8 +27,8 @@ contract RockPaperScissors {
   event LogChoice(address player, bytes32 choiceHashed, uint gameId, uint bet);
   event LogChoicesDecoding(address player, uint choice);
   event LogWinnedChoice(uint winnedChoice);
-  event LogBenefits(address winner, uint winnedAmount);
-  event LogMoneyTransfering(uint amount, address receiver);
+  event LogBenefits(address winner,uint winnedAmount);
+  event LogMoneyTransfering(uint amount,address receiver);
 
 
   function returnHash(string pass, uint8 choice) pure returns (bytes32){
@@ -78,7 +78,7 @@ contract RockPaperScissors {
   }
 
   function checkSelection(string userPass, address userAddr, uint gameId) private returns (bool success){
-    require(bytes(userPass).length != 0);
+    require(bytes(userPass).length != 0 );
     require(userAddr != 0);
     require(gameId != 0);
     require(gamesMap[gameId].everyoneChoose);
@@ -99,7 +99,7 @@ contract RockPaperScissors {
       gamesMap[gameId].isGameEnded = true;
     }
 
-    if (gamesMap[gameId].choices[gamesMap[gameId].firstPlayerAddr] != 0 && gamesMap[gameId].choices[gamesMap[gameId].secondPlayerAddr] != 0) {
+    if (gamesMap[gameId].choices[gamesMap[gameId].firstPlayerAddr] != 0 && gamesMap[gameId].choices[gamesMap[gameId].secondPlayerAddr] !=0 ){
       gamesMap[gameId].everyChooseDecoded = true;
     }
     return true;
@@ -110,15 +110,15 @@ contract RockPaperScissors {
     require(bytes(password).length != 0);
 
     require(msg.sender == gamesMap[gameId].firstPlayerAddr || msg.sender == gamesMap[gameId].secondPlayerAddr);
-    checkSelection(password, msg.sender, gameId);
-    if (gamesMap[gameId].everyChooseDecoded && !gamesMap[gameId].isGameEnded) {
+    checkSelection(password, msg.sender,gameId);
+    if (gamesMap[gameId].everyChooseDecoded && !gamesMap[gameId].isGameEnded)  {
       if (checkConditions(gameId)) {
-        setWinner(gameId);
+        setWinnerBenefits(gameId);
         return 2;
       }
-    } else if (gamesMap[gameId].everyChooseDecoded && gamesMap[gameId].isGameEnded) {
+    } else if (gamesMap[gameId].everyChooseDecoded && gamesMap[gameId].isGameEnded){
       return 0;
-    } else {
+    }else {
       return 1;
     }
   }
@@ -143,20 +143,20 @@ contract RockPaperScissors {
   }
 
 
-  function setWinner(uint gameId) private returns (bool success){
+  function setWinnerBenefits(uint gameId) private returns (bool success){
     require(gamesMap[gameId].winningChoince != 0);
     require(gamesMap[gameId].everyChooseDecoded);
     require(!gamesMap[gameId].isGameEnded);
-    if (gamesMap[gameId].winningChoince == gamesMap[gameId].choices[gamesMap[gameId].firstPlayerAddr]) {
+    if (gamesMap[gameId].winningChoince == gamesMap[gameId].choices[gamesMap[gameId].firstPlayerAddr] ) {
       gamesMap[gameId].firstPlayerScore = gamesMap[gameId].firstPlayerScore + 1;
       gamesMap[gameId].balances[gamesMap[gameId].firstPlayerAddr] += gamesMap[gameId].balances[gamesMap[gameId].secondPlayerAddr];
       gamesMap[gameId].balances[gamesMap[gameId].secondPlayerAddr] = 0;
-      emit LogBenefits(gamesMap[gameId].firstPlayerAddr, gamesMap[gameId].balances[gamesMap[gameId].firstPlayerAddr]);
-    } else if (gamesMap[gameId].winningChoince == gamesMap[gameId].choices[gamesMap[gameId].secondPlayerAddr]) {
+      LogBenefits(gamesMap[gameId].firstPlayerAddr,gamesMap[gameId].balances[gamesMap[gameId].firstPlayerAddr]);
+    } else if (gamesMap[gameId].winningChoince == gamesMap[gameId].choices[gamesMap[gameId].secondPlayerAddr] ) {
       gamesMap[gameId].secondPlayerScore = gamesMap[gameId].secondPlayerScore + 1;
       gamesMap[gameId].balances[gamesMap[gameId].secondPlayerAddr] += gamesMap[gameId].balances[gamesMap[gameId].firstPlayerAddr];
       gamesMap[gameId].balances[gamesMap[gameId].firstPlayerAddr] = 0;
-      emit LogBenefits(gamesMap[gameId].secondPlayerAddr, gamesMap[gameId].balances[gamesMap[gameId].secondPlayerAddr]);
+      LogBenefits(gamesMap[gameId].secondPlayerAddr,gamesMap[gameId].balances[gamesMap[gameId].secondPlayerAddr]);
     }
     gamesMap[gameId].isGameEnded = true;
     return true;
