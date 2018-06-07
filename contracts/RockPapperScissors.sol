@@ -29,10 +29,11 @@ contract RockPaperScissors {
   event LogWinnedChoice(uint winnedChoice);
   event LogBenefits(address winner, uint winnedAmount);
   event LogMoneyTransfering(uint amount, address receiver);
-
+  event LogAllPassDeconded(bool success);
+  event LogPassSubmited(string passw, address from, uint gameId);
   //0 step - receive hashedPassword + choice
-  function returnHash(string pass, uint8 choice) pure returns (bytes32){
-    return keccak256(pass, uint8(choice));
+  function returnHash(string pass, uint choice) pure returns (bytes32){
+    return keccak256(pass, choice);
   }
 
   //1 step - player should create New Game;
@@ -71,24 +72,31 @@ contract RockPaperScissors {
     return gamesMap[gameId].everyoneChoose;
   }
 
-  //4 step - check who wins;
-  function checkWinner(string password, uint gameId) public returns (uint status){
+  //4 step - Submit and decode password
+  function submitPassword(string password, uint gameId) public returns (bool succes){
     require(gameId != 0);
+    require(gamesMap[gameId].everyoneChoose);
     require(bytes(password).length != 0);
     require(msg.sender == gamesMap[gameId].firstPlayerAddr || msg.sender == gamesMap[gameId].secondPlayerAddr);
     checkSelection(password, msg.sender, gameId);
-    //In case if second player still not selected
-    if (gamesMap[gameId].everyChooseDecoded && !gamesMap[gameId].isGameEnded) {
+    emit LogPassSubmited(password, msg.sender, gameId);
+    return true;
+  }
+
+
+  //5 step - check who wins;
+  function checkWinner(string password, uint gameId) public returns (uint status){
+    require(gameId != 0);
+    require(msg.sender == gamesMap[gameId].firstPlayerAddr || msg.sender == gamesMap[gameId].secondPlayerAddr);
+    if (gamesMap[gameId].everyChooseDecoded) {
       if (checkConditions(gameId)) {
-        if (!gamesMap[gameId].isGameEnded){
-        setWinnerBenefits(gameId);
-        return 2;
+        if (!gamesMap[gameId].isGameEnded) {
+          setWinnerBenefits(gameId);
+          return 1;
         }
       }
-    } else if (gamesMap[gameId].everyChooseDecoded && gamesMap[gameId].isGameEnded) {
+    }  else {
       return 0;
-    } else {
-      return 1;
     }
   }
 
@@ -111,28 +119,15 @@ contract RockPaperScissors {
     require(gamesMap[gameId].everyoneChoose);
     require(gamesMap[gameId].choicesHashed[userAddr] != 0);
     require(!gamesMap[gameId].isGameEnded);
-    if (gamesMap[gameId].choicesHashed[userAddr] == keccak256(userPass, 1)) {
-      gamesMap[gameId].choices[userAddr] = 1;
-      emit LogChoicesDecoding(userAddr, 1);
-
-    } else if (gamesMap[gameId].choicesHashed[userAddr] == keccak256(userPass, 2)) {
-      gamesMap[gameId].choices[userAddr] = 2;
-      emit LogChoicesDecoding(userAddr, 2);
-
-    } else if (gamesMap[gameId].choicesHashed[userAddr] == keccak256(userPass, 3)) {
-      gamesMap[gameId].choices[userAddr] = 3;
-      emit LogChoicesDecoding(userAddr, 3);
-
-    } else {
-      gamesMap[gameId].choices[userAddr] = 4;
-      //In case if we cant decode choice we should stop game
-      gamesMap[gameId].isGameEnded = true;
-      emit LogChoicesDecoding(userAddr, 4);
-
+    for (uint i = 0; i < 3; i++) {
+      if (gamesMap[gameId].choicesHashed[userAddr] == keccak256(userPass, i)) {
+        gamesMap[gameId].choices[userAddr] = i;
+        emit LogChoicesDecoding(userAddr, i);
+      }
     }
-
     if (gamesMap[gameId].choices[gamesMap[gameId].firstPlayerAddr] != 0 && gamesMap[gameId].choices[gamesMap[gameId].secondPlayerAddr] != 0) {
       gamesMap[gameId].everyChooseDecoded = true;
+      emit LogAllPassDeconded(true);
     }
     return true;
   }
