@@ -73,7 +73,7 @@ contract RockPaperScissors {
     require(msg.sender == tempGameData.firstPlayerAddr || msg.sender == tempGameData.secondPlayerAddr);
     tempGameData.gameInfo[msg.sender].choicesHashed = choice;
     tempGameData.gameInfo[msg.sender].balances = msg.value;
-    tempGameData.deadLine = tempGameData.deadLine+ daySeconds;
+    tempGameData.deadLine = tempGameData.deadLine + daySeconds;
     if (tempGameData.gameInfo[tempGameData.firstPlayerAddr].choicesHashed != 0 && tempGameData.gameInfo[tempGameData.secondPlayerAddr].choicesHashed != 0) {
       tempGameData.currStatus = StatusesData.ALL_CHOOSED;
     }
@@ -106,7 +106,7 @@ contract RockPaperScissors {
   function checkWinner(uint gameId) public returns (uint status){
     require(gameId != 0);
     Game tempGameData = gamesMap[gameId];
-    require(gamesMap[gameId].currStatus != StatusesData.GAME_ENDED || gamesMap[gameId].currStatus !=  StatusesData.CHOICE_TIMEOUT );
+    require(gamesMap[gameId].currStatus != StatusesData.GAME_ENDED || gamesMap[gameId].currStatus != StatusesData.CHOICE_TIMEOUT);
     require(msg.sender == tempGameData.firstPlayerAddr || msg.sender == tempGameData.secondPlayerAddr);
     if (tempGameData.currStatus == StatusesData.ALL_PASS_DECODED) {
       if (checkConditions(gameId)) {
@@ -129,7 +129,7 @@ contract RockPaperScissors {
     return gamesMap[gameId].secondPlayerScore;
   }
 
-  function stopGame(uint gameId)returns (bool success){
+  function stopGame(uint gameId) public returns (bool success){
     Game tempGameData = gamesMap[gameId];
     address firstPlayer = tempGameData.firstPlayerAddr;
     address secondPlayer = tempGameData.secondPlayerAddr;
@@ -137,14 +137,14 @@ contract RockPaperScissors {
 
       tempGameData.currStatus = StatusesData.CHOICE_TIMEOUT;
 
-    }else if  (tempGameData.currStatus == StatusesData.ALL_CHOOSED && tempGameData.deadLine < now) {
-      if (tempGameData.gameInfo[firstPlayer].choices !=0 && tempGameData.gameInfo[secondPlayer] .choices==0 ){
-        tempGameData.gameInfo[firstPlayer].balances +=  tempGameData.gameInfo[secondPlayer].balances;
+    } else if (tempGameData.currStatus == StatusesData.ALL_CHOOSED && tempGameData.deadLine < now) {
+      if (tempGameData.gameInfo[firstPlayer].choices != 0 && tempGameData.gameInfo[secondPlayer] .choices == 0) {
+        tempGameData.gameInfo[firstPlayer].balances += tempGameData.gameInfo[secondPlayer].balances;
         tempGameData.gameInfo[secondPlayer].balances = 0;
         tempGameData.currStatus = StatusesData.CHOICE_TIMEOUT;
 
-      }else if (tempGameData.gameInfo[firstPlayer].choices==0 && tempGameData.gameInfo[secondPlayer] .choices!=0 ){
-        tempGameData.gameInfo[secondPlayer].balances +=  tempGameData.gameInfo[firstPlayer].balances;
+      } else if (tempGameData.gameInfo[firstPlayer].choices == 0 && tempGameData.gameInfo[secondPlayer] .choices != 0) {
+        tempGameData.gameInfo[secondPlayer].balances += tempGameData.gameInfo[firstPlayer].balances;
         tempGameData.gameInfo[firstPlayer].balances = 0;
         tempGameData.currStatus = StatusesData.CHOICE_TIMEOUT;
 
@@ -229,7 +229,7 @@ contract RockPaperScissors {
 
 
   function withdrawFunds(uint gameId) public {
-    require(gamesMap[gameId].currStatus == StatusesData.GAME_ENDED || gamesMap[gameId].currStatus ==  StatusesData.CHOICE_TIMEOUT);
+    require(gamesMap[gameId].currStatus == StatusesData.GAME_ENDED || gamesMap[gameId].currStatus == StatusesData.CHOICE_TIMEOUT);
     require(gamesMap[gameId].gameInfo[msg.sender].balances > 0);
     emit LogMoneyTransfering(gamesMap[gameId].gameInfo[msg.sender].balances, msg.sender);
     msg.sender.transfer(gamesMap[gameId].gameInfo[msg.sender].balances);
