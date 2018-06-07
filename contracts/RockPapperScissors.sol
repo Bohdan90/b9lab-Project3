@@ -2,7 +2,7 @@ pragma solidity ^0.4.4;
 
 
 contract RockPaperScissors {
-  enum StatusesData {STARTED,ALL_CHOOSED,ALL_PASS_DECODED,GAME_ENDED}
+  enum StatusesData {STARTED, ALL_CHOOSED, ALL_PASS_DECODED, GAME_ENDED, CHOICE_TIMEOUT}
 
   struct Game {
     address firstPlayerAddr;
@@ -11,6 +11,7 @@ contract RockPaperScissors {
     uint winningChoince;
     uint firstPlayerScore;
     uint secondPlayerScore;
+    uint deadLine;
     bool isGameEnded;
     bool everyoneChoose;
     bool everyChooseDecoded;
@@ -19,14 +20,14 @@ contract RockPaperScissors {
     mapping(address => GameMetainfo) gameInfo;
   }
 
-  struct GameMetainfo{
+  struct GameMetainfo {
     bytes32 choicesHashed;
     uint choices;
     uint balances;
   }
 
   uint gamesId = 1;
-
+  uint daySeconds = 86400;
 
   mapping(uint => Game) gamesMap;
 
@@ -53,7 +54,8 @@ contract RockPaperScissors {
     tempGameData.firstPlayerAddr = firstPlayer;
     tempGameData.secondPlayerAddr = secondPlayer;
     tempGameData.gameId = gamesId;
-    tempGameData.currStatus =StatusesData.STARTED;
+    tempGameData.currStatus = StatusesData.STARTED;
+    tempGameData.deadLine = now + daySeconds;
     gamesMap[gamesId] = tempGameData;
 
     gamesId++;
@@ -63,14 +65,15 @@ contract RockPaperScissors {
 
   //2 step - player should make his choice;
   function makeChoice(bytes32 choice, uint gameId) payable returns (bool result){
-    Game tempGameData  = gamesMap[gameId];
+    Game tempGameData = gamesMap[gameId];
 
-    require(tempGameData.currStatus!=StatusesData.ALL_CHOOSED);
-    require(tempGameData.currStatus!=StatusesData.GAME_ENDED);
+    require(tempGameData.currStatus != StatusesData.ALL_CHOOSED);
+    require(tempGameData.currStatus != StatusesData.GAME_ENDED);
     require(msg.value != 0);
     require(msg.sender == tempGameData.firstPlayerAddr || msg.sender == tempGameData.secondPlayerAddr);
     tempGameData.gameInfo[msg.sender].choicesHashed = choice;
     tempGameData.gameInfo[msg.sender].balances = msg.value;
+    tempGameData.deadLine = tempGameData.deadLine+ daySeconds;
     if (tempGameData.gameInfo[tempGameData.firstPlayerAddr].choicesHashed != 0 && tempGameData.gameInfo[tempGameData.secondPlayerAddr].choicesHashed != 0) {
       tempGameData.currStatus = StatusesData.ALL_CHOOSED;
     }
@@ -81,7 +84,7 @@ contract RockPaperScissors {
 
   //3 step - player should check is everybody choose;
   function isEveryoneChoose(uint gameId) public view returns (bool){
-    if (gamesMap[gameId].currStatus == StatusesData.ALL_CHOOSED){
+    if (gamesMap[gameId].currStatus == StatusesData.ALL_CHOOSED) {
       return true;
     }
   }
@@ -103,6 +106,7 @@ contract RockPaperScissors {
   function checkWinner(uint gameId) public returns (uint status){
     require(gameId != 0);
     Game tempGameData = gamesMap[gameId];
+    require(gamesMap[gameId].currStatus != StatusesData.GAME_ENDED || gamesMap[gameId].currStatus !=  StatusesData.CHOICE_TIMEOUT );
     require(msg.sender == tempGameData.firstPlayerAddr || msg.sender == tempGameData.secondPlayerAddr);
     if (tempGameData.currStatus == StatusesData.ALL_PASS_DECODED) {
       if (checkConditions(gameId)) {
@@ -111,7 +115,7 @@ contract RockPaperScissors {
           return 1;
         }
       }
-    }  else {
+    } else {
       return 0;
     }
   }
@@ -120,12 +124,36 @@ contract RockPaperScissors {
     return gamesMap[gameId].firstPlayerScore;
   }
 
+
   function getSecondScore(uint gameId) public view returns (uint){
     return gamesMap[gameId].secondPlayerScore;
   }
 
+  function stopGame(uint gameId)returns (bool success){
+    Game tempGameData = gamesMap[gameId];
+    address firstPlayer = tempGameData.firstPlayerAddr;
+    address secondPlayer = tempGameData.secondPlayerAddr;
+    if (tempGameData.currStatus == StatusesData.STARTED && tempGameData.deadLine < now) {
 
+      tempGameData.currStatus = StatusesData.CHOICE_TIMEOUT;
 
+    }else if  (tempGameData.currStatus == StatusesData.ALL_CHOOSED && tempGameData.deadLine < now) {
+      if (tempGameData.gameInfo[firstPlayer].choices !=0 && tempGameData.gameInfo[secondPlayer] .choices==0 ){
+        tempGameData.gameInfo[firstPlayer].balances +=  tempGameData.gameInfo[secondPlayer].balances;
+        tempGameData.gameInfo[secondPlayer].balances = 0;
+        tempGameData.currStatus = StatusesData.CHOICE_TIMEOUT;
+
+      }else if (tempGameData.gameInfo[firstPlayer].choices==0 && tempGameData.gameInfo[secondPlayer] .choices!=0 ){
+        tempGameData.gameInfo[secondPlayer].balances +=  tempGameData.gameInfo[firstPlayer].balances;
+        tempGameData.gameInfo[firstPlayer].balances = 0;
+        tempGameData.currStatus = StatusesData.CHOICE_TIMEOUT;
+
+      }
+
+    }
+    gamesMap[gameId] = tempGameData;
+
+  }
 
   //decode choices
   function checkSelection(string userPass, address userAddr, uint gameId) private returns (bool success){
@@ -137,8 +165,8 @@ contract RockPaperScissors {
     require(tempGameData.gameInfo[userAddr].choicesHashed != 0);
 
     for (uint i = 0; i < 3; i++) {
-      if (tempGameData.gameInfo[userAddr].choicesHashed== keccak256(userPass, i)) {
-        tempGameData.gameInfo[userAddr].choices= i;
+      if (tempGameData.gameInfo[userAddr].choicesHashed == keccak256(userPass, i)) {
+        tempGameData.gameInfo[userAddr].choices = i;
         emit LogChoicesDecoding(userAddr, i);
       }
     }
@@ -186,7 +214,7 @@ contract RockPaperScissors {
     if (tempGameData.winningChoince == tempGameData.gameInfo[tempGameData.firstPlayerAddr].choices) {
       tempGameData.firstPlayerScore = tempGameData.firstPlayerScore + 1;
       tempGameData.gameInfo[tempGameData.firstPlayerAddr].balances += tempGameData.gameInfo[tempGameData.secondPlayerAddr].balances;
-      tempGameData.gameInfo[tempGameData.secondPlayerAddr].balances= 0;
+      tempGameData.gameInfo[tempGameData.secondPlayerAddr].balances = 0;
       emit LogBenefits(tempGameData.firstPlayerAddr, tempGameData.gameInfo[tempGameData.firstPlayerAddr].balances);
     } else if (tempGameData.winningChoince == tempGameData.gameInfo[tempGameData.secondPlayerAddr].choices) {
       tempGameData.secondPlayerScore = gamesMap[gameId].secondPlayerScore + 1;
@@ -201,7 +229,7 @@ contract RockPaperScissors {
 
 
   function withdrawFunds(uint gameId) public {
-    require( gamesMap[gameId].currStatus == StatusesData.GAME_ENDED);
+    require(gamesMap[gameId].currStatus == StatusesData.GAME_ENDED || gamesMap[gameId].currStatus ==  StatusesData.CHOICE_TIMEOUT);
     require(gamesMap[gameId].gameInfo[msg.sender].balances > 0);
     emit LogMoneyTransfering(gamesMap[gameId].gameInfo[msg.sender].balances, msg.sender);
     msg.sender.transfer(gamesMap[gameId].gameInfo[msg.sender].balances);
