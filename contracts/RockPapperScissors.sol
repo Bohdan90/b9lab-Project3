@@ -32,6 +32,7 @@ contract RockPaperScissors {
   mapping(uint => Game) gamesMap;
 
   event LogNewGameCreation(address player1, address player2, uint gameId);
+  event LogGameStopped(address whoStops, uint deadline, bool success);
   event LogChoice(address player, bytes32 choiceHashed, uint gameId, uint bet);
   event LogChoicesDecoding(address player, uint choice);
   event LogWinnedChoice(uint winnedChoice);
@@ -59,7 +60,7 @@ contract RockPaperScissors {
     gamesMap[gamesId] = tempGameData;
 
     gamesId++;
-    LogNewGameCreation(tempGameData.firstPlayerAddr, tempGameData.secondPlayerAddr, tempGameData.gameId);
+    emit LogNewGameCreation(tempGameData.firstPlayerAddr, tempGameData.secondPlayerAddr, tempGameData.gameId);
     return tempGameData.gameId;
   }
 
@@ -134,25 +135,25 @@ contract RockPaperScissors {
     address firstPlayer = tempGameData.firstPlayerAddr;
     address secondPlayer = tempGameData.secondPlayerAddr;
     if (tempGameData.currStatus == StatusesData.STARTED && tempGameData.deadLine < now) {
-
       tempGameData.currStatus = StatusesData.CHOICE_TIMEOUT;
-
+      emit LogGameStopped( msg.sender,  deadline, true);
     } else if (tempGameData.currStatus == StatusesData.ALL_CHOOSED && tempGameData.deadLine < now) {
       if (tempGameData.gameInfo[firstPlayer].choices != 0 && tempGameData.gameInfo[secondPlayer] .choices == 0) {
         tempGameData.gameInfo[firstPlayer].balances += tempGameData.gameInfo[secondPlayer].balances;
         tempGameData.gameInfo[secondPlayer].balances = 0;
         tempGameData.currStatus = StatusesData.CHOICE_TIMEOUT;
-
-      } else if (tempGameData.gameInfo[firstPlayer].choices == 0 && tempGameData.gameInfo[secondPlayer] .choices != 0) {
+        emit LogGameStopped( msg.sender,  deadline, true);
+      } else if (tempGameData.gameInfo[firstPlayer].choices == 0 && tempGameData.gameInfo[secondPlayer].choices != 0) {
         tempGameData.gameInfo[secondPlayer].balances += tempGameData.gameInfo[firstPlayer].balances;
         tempGameData.gameInfo[firstPlayer].balances = 0;
         tempGameData.currStatus = StatusesData.CHOICE_TIMEOUT;
-
+        emit LogGameStopped( msg.sender,  deadline, true);
       }
-
+    }else {
+        emit LogGameStopped( msg.sender,  deadline, false);
     }
     gamesMap[gameId] = tempGameData;
-
+    return true;
   }
 
   //decode choices
