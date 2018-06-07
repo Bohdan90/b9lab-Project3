@@ -2,6 +2,8 @@ pragma solidity ^0.4.4;
 
 
 contract RockPaperScissors {
+  enum StatusesData {STARTED,ALL_CHOOSED,ALL_PASS_DECODED,GAME_ENDED};
+
   struct Game {
     address firstPlayerAddr;
     address secondPlayerAddr;
@@ -12,10 +14,15 @@ contract RockPaperScissors {
     bool isGameEnded;
     bool everyoneChoose;
     bool everyChooseDecoded;
-    mapping(address => bytes32) choicesHashed;
-    mapping(address => uint) choices;
-    mapping(address => uint) balances;
 
+    StatusesData currStatus;
+    mapping(address => GameMetainfo) gameInfo;
+  }
+
+  struct GameMetainfo{
+     bytes32 choicesHashed;
+     uint choices;
+    uint balances;
   }
 
   uint gamesId = 1;
@@ -46,7 +53,9 @@ contract RockPaperScissors {
     tempGameData.firstPlayerAddr = firstPlayer;
     tempGameData.secondPlayerAddr = secondPlayer;
     tempGameData.gameId = gamesId;
+    tempGameData.currStatus =StatusesData.STARTED;
     gamesMap[gamesId] = tempGameData;
+
     gamesId++;
     LogNewGameCreation(tempGameData.firstPlayerAddr, tempGameData.secondPlayerAddr, tempGameData.gameId);
     return tempGameData.gameId;
@@ -54,14 +63,14 @@ contract RockPaperScissors {
 
   //2 step - player should make his choice;
   function makeChoice(bytes32 choice, uint gameId) payable returns (bool result){
-    require(!gamesMap[gameId].everyoneChoose);
-    require(!gamesMap[gameId].isGameEnded);
+    require(gamesMap[gameId].currStatus!=StatusesData.ALL_CHOOSED);
+    require(gamesMap[gameId].currStatus!=StatusesData.GAME_ENDED);
     require(msg.value != 0);
     require(msg.sender == gamesMap[gameId].firstPlayerAddr || msg.sender == gamesMap[gameId].secondPlayerAddr);
-    gamesMap[gameId].choicesHashed[msg.sender] = choice;
-    gamesMap[gameId].balances[msg.sender] = msg.value;
-    if (gamesMap[gameId].choicesHashed[gamesMap[gameId].firstPlayerAddr] != 0 && gamesMap[gameId].choicesHashed[gamesMap[gameId].secondPlayerAddr] != 0) {
-      gamesMap[gameId].everyoneChoose = true;
+    gamesMap[gameId].gameInfo[msg.sender].choicesHashed = choice;
+    gamesMap[gameId].gameInfo[msg.sender].balances = msg.value;
+    if (gamesMap[gameId].gameInfo[gamesMap[gameId].firstPlayerAddr].choicesHashed != 0 && gamesMap[gameId].gameInfo[gamesMap[gameId].secondPlayerAddr].choicesHashed != 0) {
+      gamesMap[gameId].currStatus = StatusesData.ALL_CHOOSED;
     }
     emit LogChoice(msg.sender, choice, gameId, msg.value);
     return true;
@@ -69,13 +78,15 @@ contract RockPaperScissors {
 
   //3 step - player should check is everybody choose;
   function isEveryoneChoose(uint gameId) public returns (bool){
-    return gamesMap[gameId].everyoneChoose;
+if (gamesMap[gameId].currStatus == StatusesData.ALL_CHOOSED){
+    return true;
+}
   }
 
   //4 step - Submit and decode password
   function submitPassword(string password, uint gameId) public returns (bool succes){
     require(gameId != 0);
-    require(gamesMap[gameId].everyoneChoose);
+    require(gamesMap[gameId].currStatus == StatusesData.ALL_CHOOSED);
     require(bytes(password).length != 0);
     require(msg.sender == gamesMap[gameId].firstPlayerAddr || msg.sender == gamesMap[gameId].secondPlayerAddr);
     checkSelection(password, msg.sender, gameId);
@@ -88,9 +99,9 @@ contract RockPaperScissors {
   function checkWinner(string password, uint gameId) public returns (uint status){
     require(gameId != 0);
     require(msg.sender == gamesMap[gameId].firstPlayerAddr || msg.sender == gamesMap[gameId].secondPlayerAddr);
-    if (gamesMap[gameId].everyChooseDecoded) {
+    if (gamesMap[gameId].currStatus == StatusesData.ALL_PASS_DECODED) {
       if (checkConditions(gameId)) {
-        if (!gamesMap[gameId].isGameEnded) {
+        if (gamesMap[gameId].currStatus != StatusesData.GAME_ENDED) {
           setWinnerBenefits(gameId);
           return 1;
         }
@@ -116,17 +127,17 @@ contract RockPaperScissors {
     require(bytes(userPass).length != 0);
     require(userAddr != 0);
     require(gameId != 0);
-    require(gamesMap[gameId].everyoneChoose);
-    require(gamesMap[gameId].choicesHashed[userAddr] != 0);
-    require(!gamesMap[gameId].isGameEnded);
+    require(gamesMap[gameId].currStatus == StatusesData.ALL_CHOOSED);
+    require(gamesMap[gameId].gameInfo[userAddr].choicesHashed != 0);
+
     for (uint i = 0; i < 3; i++) {
-      if (gamesMap[gameId].choicesHashed[userAddr] == keccak256(userPass, i)) {
-        gamesMap[gameId].choices[userAddr] = i;
+      if (gamesMap[gameId].gameInfo[userAddr].choicesHashed== keccak256(userPass, i)) {
+        gamesMap[gameId].gameInfo[userAddr].choices= i;
         emit LogChoicesDecoding(userAddr, i);
       }
     }
-    if (gamesMap[gameId].choices[gamesMap[gameId].firstPlayerAddr] != 0 && gamesMap[gameId].choices[gamesMap[gameId].secondPlayerAddr] != 0) {
-      gamesMap[gameId].everyChooseDecoded = true;
+    if (gamesMap[gameId].gameInfo[gamesMap[gameId].firstPlayerAddr].choices != 0 && gamesMap[gameId].gameInfo[gamesMap[gameId].secondPlayerAddr].choices != 0) {
+gamesMap[gameId].currStatus = StatusesData.ALL_PASS_DECODED;
       emit LogAllPassDeconded(true);
     }
     return true;
@@ -135,13 +146,13 @@ contract RockPaperScissors {
 
   //check winned combination
   function checkConditions(uint gameId) private returns (bool success){
-    require(gamesMap[gameId].everyChooseDecoded);
-    uint firstChoice = gamesMap[gameId].choices[gamesMap[gameId].firstPlayerAddr];
-    uint secondChoice = gamesMap[gameId].choices[gamesMap[gameId].secondPlayerAddr];
+    require(gamesMap[gameId].currStatus == StatusesData.ALL_PASS_DECODED);
+    uint firstChoice = gamesMap[gameId].gameInfo[gamesMap[gameId].firstPlayerAddr].choices;
+    uint secondChoice = gamesMap[gameId].gameInfo[gamesMap[gameId].secondPlayerAddr].choices;
     if (firstChoice == secondChoice) {
       gamesMap[gameId].winningChoince = 4;
       //In case of draw we should stop game
-      gamesMap[gameId].isGameEnded = true;
+      gamesMap[gameId].currStatus = StatusesData.GAME_ENDED;
     } else if ((firstChoice == 1 || secondChoice == 1) &&
       (firstChoice == 2 || secondChoice == 2)) {
       gamesMap[gameId].winningChoince = 1;
@@ -158,30 +169,30 @@ contract RockPaperScissors {
 
   function setWinnerBenefits(uint gameId) private returns (bool success){
     require(gamesMap[gameId].winningChoince != 0);
-    require(gamesMap[gameId].everyChooseDecoded);
-    require(!gamesMap[gameId].isGameEnded);
-    if (gamesMap[gameId].winningChoince == gamesMap[gameId].choices[gamesMap[gameId].firstPlayerAddr]) {
+gamesMap[gameId].currStatus = StatusesData.ALL_PASS_DECODED;
+
+    if (gamesMap[gameId].winningChoince == gamesMap[gameId].gameInfo[gamesMap[gameId].firstPlayerAddr].choices) {
       gamesMap[gameId].firstPlayerScore = gamesMap[gameId].firstPlayerScore + 1;
-      gamesMap[gameId].balances[gamesMap[gameId].firstPlayerAddr] += gamesMap[gameId].balances[gamesMap[gameId].secondPlayerAddr];
-      gamesMap[gameId].balances[gamesMap[gameId].secondPlayerAddr] = 0;
-      emit LogBenefits(gamesMap[gameId].firstPlayerAddr, gamesMap[gameId].balances[gamesMap[gameId].firstPlayerAddr]);
-    } else if (gamesMap[gameId].winningChoince == gamesMap[gameId].choices[gamesMap[gameId].secondPlayerAddr]) {
+      gamesMap[gameId].gameInfo[gamesMap[gameId].firstPlayerAddr].balances += gamesMap[gameId].gameInfo[gamesMap[gameId].secondPlayerAddr].balances;
+      gamesMap[gameId].gameInfo[gamesMap[gameId].secondPlayerAddr].balances= 0;
+      emit LogBenefits(gamesMap[gameId].firstPlayerAddr, gamesMap[gameId].gameInfo[gamesMap[gameId].firstPlayerAddr].balances);
+    } else if (gamesMap[gameId].winningChoince == gamesMap[gameId].gameInfo[gamesMap[gameId].secondPlayerAddr].choices) {
       gamesMap[gameId].secondPlayerScore = gamesMap[gameId].secondPlayerScore + 1;
-      gamesMap[gameId].balances[gamesMap[gameId].secondPlayerAddr] += gamesMap[gameId].balances[gamesMap[gameId].firstPlayerAddr];
-      gamesMap[gameId].balances[gamesMap[gameId].firstPlayerAddr] = 0;
-      emit LogBenefits(gamesMap[gameId].secondPlayerAddr, gamesMap[gameId].balances[gamesMap[gameId].secondPlayerAddr]);
+      gamesMap[gameId].gameInfo[gamesMap[gameId].secondPlayerAddr].balances += gamesMap[gameId].gameInfo[gamesMap[gameId].firstPlayerAddr].balances;
+      gamesMap[gameId].gameInfo[gamesMap[gameId].firstPlayerAddr].balances = 0;
+      emit LogBenefits(gamesMap[gameId].secondPlayerAddr, gamesMap[gameId].gameInfo[gamesMap[gameId].secondPlayerAddr].balances);
     }
-    gamesMap[gameId].isGameEnded = true;
+gamesMap[gameId].currStatus = StatusesData.GAME_ENDED;
     return true;
   }
 
 
   function withdrawFunds(uint gameId) public {
-    require(gamesMap[gameId].isGameEnded);
-    require(gamesMap[gameId].balances[msg.sender] > 0);
-    emit LogMoneyTransfering(gamesMap[gameId].balances[msg.sender], msg.sender);
-    msg.sender.transfer(gamesMap[gameId].balances[msg.sender]);
-    gamesMap[gameId].balances[msg.sender] = 0;
+    require( gamesMap[gameId].currStatus == StatusesData.GAME_ENDED);
+    require(gamesMap[gameId].gameInfo[msg.sender].balances > 0);
+    emit LogMoneyTransfering(gamesMap[gameId].gameInfo[msg.sender].balances, msg.sender);
+    msg.sender.transfer(gamesMap[gameId].gameInfo[msg.sender].balances);
+    gamesMap[gameId].gameInfo[msg.sender].balances = 0;
   }
 
 
