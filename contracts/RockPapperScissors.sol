@@ -136,21 +136,21 @@ contract RockPaperScissors {
     address secondPlayer = tempGameData.secondPlayerAddr;
     if (tempGameData.currStatus == StatusesData.STARTED && tempGameData.deadLine < now) {
       tempGameData.currStatus = StatusesData.CHOICE_TIMEOUT;
-      emit LogGameStopped( msg.sender,  deadline, true);
+      emit LogGameStopped( msg.sender,  tempGameData.deadLine, true);
     } else if (tempGameData.currStatus == StatusesData.ALL_CHOOSED && tempGameData.deadLine < now) {
       if (tempGameData.gameInfo[firstPlayer].choices != 0 && tempGameData.gameInfo[secondPlayer] .choices == 0) {
         tempGameData.gameInfo[firstPlayer].balances += tempGameData.gameInfo[secondPlayer].balances;
         tempGameData.gameInfo[secondPlayer].balances = 0;
         tempGameData.currStatus = StatusesData.CHOICE_TIMEOUT;
-        emit LogGameStopped( msg.sender,  deadline, true);
+        emit LogGameStopped( msg.sender,  tempGameData.deadLine, true);
       } else if (tempGameData.gameInfo[firstPlayer].choices == 0 && tempGameData.gameInfo[secondPlayer].choices != 0) {
         tempGameData.gameInfo[secondPlayer].balances += tempGameData.gameInfo[firstPlayer].balances;
         tempGameData.gameInfo[firstPlayer].balances = 0;
         tempGameData.currStatus = StatusesData.CHOICE_TIMEOUT;
-        emit LogGameStopped( msg.sender,  deadline, true);
+        emit LogGameStopped( msg.sender,  tempGameData.deadLine, true);
       }
     }else {
-        emit LogGameStopped( msg.sender,  deadline, false);
+      emit LogGameStopped( msg.sender,  tempGameData.deadLine, false);
     }
     gamesMap[gameId] = tempGameData;
     return true;
